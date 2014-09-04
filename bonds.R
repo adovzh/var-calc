@@ -33,12 +33,7 @@ cashflow.dates <- function(valuation, maturity) {
     else c(cashflow.dates(valuation, maturity - months(6)), maturity)
 }
 
-# maturities <- c("2014-10-21", "2015-04-15", "2016-06-15", 
-#                 "2017-02-15", "2018-01-21")
-# cashflows <- lapply(maturities, 
-#                     function(x) 
-#                         cashflow.dates(as.Date("2014-08-07"), as.Date(x)))
-# # curve on valuation date
+# curve on valuation date
 val.date <- "2014-08-07"
 # vcurve <- zcurve[zcurve[,1] == val.date, -1]
 
@@ -72,7 +67,6 @@ price.bond <- function(zcurve, bond, valuation) {
     coupon.paym <- rep(bond$face * bond$coupon / 2, length(maturity))
     fv.paym <- c(rep(0, length(maturity) - 1), bond$face)
     cashflows <- coupon.paym + fv.paym
-#     print(cashflows)
     
     # rates
     v1 <- sapply(maturity, function(m) {
