@@ -1,16 +1,28 @@
-read.curve <- function() {
-    AUSTRALIA_ZERO_CURVE_FILE <- "AUSTRALIA_ZERO_CURVE.csv"
+curve.profile <- data.frame(
+    sheet = c("AUSTRALIA_ZERO_CURVE",
+              "EURO_ZERO_CURVE",
+              "US_ZERO_CURVE",
+              "JAPAN_ZERO_CURVE",
+              "UK_ZERO_CURVE"),
+    row.names = c("AUD", "EUR", "USD", "JPY", "GBP"),
+    stringsAsFactors = FALSE)
+
+read.curve <- function(currency = "AUD") {
+#     AUSTRALIA_ZERO_CURVE_FILE <- "AUSTRALIA_ZERO_CURVE.csv"
+    curvefile <- paste0(curve.profile[currency, "sheet"], ".csv")
     
-    if (file.exists(AUSTRALIA_ZERO_CURVE_FILE)) {
-        curve <- read.csv(file = AUSTRALIA_ZERO_CURVE_FILE)
+    if (file.exists(curvefile)) {
+        curve <- read.csv(file = curvefile)
         curve[,1] <- as.Date(as.character(curve[,1]), format = "%Y-%m-%d")
         curve
     } else {
+        options(java.parameters = "-Xmx1024m")
         require(xlsx)
         
         XLSX_FILE <- "ASSIGNMENT_DATA_2014.xlsx"
-        AUS_ZERO_CURVE_SHEET <- "AUSTRALIA_ZERO_CURVE"
-        curve <- read.xlsx(file = XLSX_FILE, sheetName = AUS_ZERO_CURVE_SHEET, 
+#         AUS_ZERO_CURVE_SHEET <- "AUSTRALIA_ZERO_CURVE"
+        curvesheet <- curve.profile[currency, "sheet"]
+        curve <- read.xlsx(file = XLSX_FILE, sheetName = curvesheet, 
                            startRow = 2, header = TRUE)
         # remove empty rows and columns
         has.empty.values <- function(x) any(!is.na(x))
@@ -19,13 +31,45 @@ read.curve <- function() {
         curve <- curve[non.empty.rows, non.empty.columns]
         
         # cache zero curve on disk
-        write.csv(format(curve, digits=15), file = AUSTRALIA_ZERO_CURVE_FILE, 
+        write.csv(format(curve, digits=15), file = curvefile, 
                   row.names = FALSE)
         curve
     }
 }
 
-zcurve <- read.curve()
+onDate.curve <- function(curve, date) curve[curve[,1] == date, -1]
+zero.maturities <- function(curve, valuation) {
+    r <- regexec("\\w{2}(\\d{2})Y(\\d{2})", names(curve))
+    # names should match
+    stopifnot(all(sapply(r, function(x) length(x) > 1)))
+    
+    z <- mapply(function(name, o) substring(name, o, o + attr(o, "match.length") - 1),
+                names(curve), r, USE.NAMES = FALSE)[-1,]
+    z <- apply(z, 2, as.list)
+    
+    do.call("c", lapply(z, function(x) {
+        y <- as.numeric(x[[1]])
+        m <- as.numeric(x[[2]])
+        as.Date(valuation) + years(y) + months(m)
+    }))    
+}
+
+# returns interpolated value of interest rate
+# at the specified date (can be a vector)
+# from a given curves data frame
+# on a given valuation date
+onDate.rate <- function(curves, valuation, date) {
+    vcurve <- onDate.curve(curves, valuation)
+    zm <- zero.maturities(vcurve, valuation)
+    
+    sapply(date, function(m) {
+        # i - next zero index
+        i <- min(which(zm > m))
+        m <- as.Date(m)
+        a <- as.numeric(m - zm[i - 1]) / as.numeric(zm[i] - zm[i - 1])
+        as.numeric(vcurve[i - 1] * (1 - a) + vcurve[i] * a)        
+    })
+}
 
 cashflow.dates <- function(valuation, maturity) {
     require(lubridate)
@@ -33,34 +77,14 @@ cashflow.dates <- function(valuation, maturity) {
     else c(cashflow.dates(valuation, maturity - months(6)), maturity)
 }
 
-# curve on valuation date
-val.date <- "2014-08-07"
-# vcurve <- zcurve[zcurve[,1] == val.date, -1]
-
 defbond <- function(coupon, maturity, face) {
     structure(list(coupon = coupon, maturity = maturity, face = face), class="bond")
 }
 
 price.bond <- function(zcurve, bond, valuation) {
     require(lubridate)
-    vcurve <- zcurve[zcurve[,1] == valuation, -1]
-
-    r <- regexec("AU(\\d{2})Y(\\d{2})", names(vcurve))
-    # names should match
-    stopifnot(all(sapply(r, function(x) length(x) > 1)))
-
-    z <- mapply(function(name, o) substring(name, o, o + attr(o, "match.length") - 1),
-           names(vcurve), r, USE.NAMES = FALSE)[-1,]
-    z <- apply(z, 2, as.list)
     
-    # zm - zero maturities
-    zm <- do.call("c", lapply(z, function(x) {
-        y <- as.numeric(x[[1]])
-        m <- as.numeric(x[[2]])
-        as.Date(valuation) + years(y) + months(m)
-    }))
-    
-    # maturities
+    # maturities (cashflow dates)
     maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity))
     
     # cashflows
@@ -69,26 +93,10 @@ price.bond <- function(zcurve, bond, valuation) {
     cashflows <- coupon.paym + fv.paym
     
     # rates
-    v1 <- sapply(maturity, function(m) {
-        # i - next zero index
-        i <- min(which(zm > m))
-        m <- as.Date(m)
-        a <- as.numeric(m - zm[i - 1]) / as.numeric(zm[i] - zm[i - 1])
-        as.numeric(vcurve[i - 1] * (1 - a) + vcurve[i] * a)
-    })
+    v1 <- onDate.rate(zcurve, valuation, maturity)
     
     # annualised maturities
-    v2 <- as.numeric(as.Date(maturity) - as.Date(valuation)) / 365
-    sum(cashflows * exp(-1 * v1 * v2))
+    dt <- as.numeric(as.Date(maturity) - as.Date(valuation)) / 365
+    sum(cashflows * exp(-1 * v1 * dt))
 }
 
-# bonds definitions
-b1 <- defbond(coupon = .045, maturity = "2014-10-21", face = 3e7)
-b2 <- defbond(coupon = .0625, maturity = "2015-04-15", face = 9e7)
-b3 <- defbond(coupon = .0475, maturity = "2016-06-15", face = 7.5e7)
-b4 <- defbond(coupon = .06, maturity = "2017-02-15", face = 5e7)
-b5 <- defbond(coupon = .055, maturity = "2018-01-21", face = 5e7)
-
-# portfolio
-b <- list(b1, b2, b3, b4, b5)
-p1 <- sum(unlist(lapply(b, function(bond) price.bond(zcurve, bond, val.date))))
