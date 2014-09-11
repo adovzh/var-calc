@@ -1,43 +1,5 @@
-curve.profile <- data.frame(
-    sheet = c("AUSTRALIA_ZERO_CURVE",
-              "EURO_ZERO_CURVE",
-              "US_ZERO_CURVE",
-              "JAPAN_ZERO_CURVE",
-              "UK_ZERO_CURVE"),
-    row.names = c("AUD", "EUR", "USD", "JPY", "GBP"),
-    stringsAsFactors = FALSE)
-
-read.curve <- function(currency = "AUD") {
-#     AUSTRALIA_ZERO_CURVE_FILE <- "AUSTRALIA_ZERO_CURVE.csv"
-    curvefile <- paste0(curve.profile[currency, "sheet"], ".csv")
-    
-    if (file.exists(curvefile)) {
-        curve <- read.csv(file = curvefile)
-        curve[,1] <- as.Date(as.character(curve[,1]), format = "%Y-%m-%d")
-        curve
-    } else {
-        options(java.parameters = "-Xmx1024m")
-        require(xlsx)
-        
-        XLSX_FILE <- "ASSIGNMENT_DATA_2014.xlsx"
-#         AUS_ZERO_CURVE_SHEET <- "AUSTRALIA_ZERO_CURVE"
-        curvesheet <- curve.profile[currency, "sheet"]
-        curve <- read.xlsx(file = XLSX_FILE, sheetName = curvesheet, 
-                           startRow = 2, header = TRUE)
-        # remove empty rows and columns
-        has.empty.values <- function(x) any(!is.na(x))
-        non.empty.rows <- apply(curve, 1, has.empty.values)
-        non.empty.columns <- apply(curve, 2, has.empty.values)
-        curve <- curve[non.empty.rows, non.empty.columns]
-        
-        # cache zero curve on disk
-        write.csv(format(curve, digits=15), file = curvefile, 
-                  row.names = FALSE)
-        curve
-    }
-}
-
 onDate.curve <- function(curve, date) curve[curve[,1] == date, -1]
+
 zero.maturities <- function(curve, valuation) {
     r <- regexec("\\w{2}(\\d{2})Y(\\d{2})", names(curve))
     # names should match
@@ -81,8 +43,12 @@ defbond <- function(coupon, maturity, face) {
     structure(list(coupon = coupon, maturity = maturity, face = face), class="bond")
 }
 
-price.bond <- function(zcurve, bond, valuation) {
+price <- function(sec, ...) UseMethod("price")
+
+price.bond <- function(bond, valuation, refdata) {
     require(lubridate)
+    
+    zcurve <- refdata$curves()$AUD
     
     # maturities (cashflow dates)
     maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity))
