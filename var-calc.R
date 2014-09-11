@@ -2,6 +2,7 @@ source("refdata.R")
 source("bonds.R")
 source("rates.R")
 source("stock.R")
+source("portfolio.R")
 
 # refdata
 refdata <- get.refdata()
@@ -17,8 +18,8 @@ b4 <- defbond(coupon = .06, maturity = "2017-02-15", face = 5e7)
 b5 <- defbond(coupon = .055, maturity = "2018-01-21", face = 5e7)
 
 # portfolio
-p1 <- list(b1, b2, b3, b4, b5)
-p1p <- sum(unlist(lapply(p1, function(bond) price(bond, val.date, refdata))))
+p1 <- defportfolio(b1, b2, b3, b4, b5)
+p1p <- price(p1, val.date, refdata)
 
 # currency options and currency forwards
 fo1 <- deffxoption(currency = "USD", callFlag = "c", pos = "short",
@@ -34,9 +35,10 @@ ff1 <- deffxfwd(currency = "JPY", amount = 1.5e9, fwdrate = 92.1, maturity = "20
 ff2 <- deffxfwd(currency = "USD", amount = 1.2e8, fwdrate = 0.9315, maturity = "2014-12-08")
 ff3 <- deffxfwd(currency = "EUR", amount = 8e7, fwdrate = 0.6915, maturity = "2015-01-15")
 
-p3 <- list(fo1, fo2, fo3, fo4, ff1, ff2, ff3)
-p3p <- sum(unlist(lapply(p3, function(s) price(s, val.date, refdata))))
+p3 <- defportfolio(fo1, fo2, fo3, fo4, ff1, ff2, ff3)
+p3p <- price(p3, val.date, refdata)
 
+# portfolio 4
 s1 <- defstock(symbol = "CBA", amount = 8e4, pos = "short")
 s2 <- defstock(symbol = "ANZ", amount = 1.2e5, pos = "long")
 s3 <- defstock(symbol = "RIO", amount = 1e5, pos = "long")
@@ -44,5 +46,18 @@ s4 <- defstock(symbol = "NCM", amount = 3e5, pos = "short")
 s5 <- defstock(symbol = "WPL", amount = 9e4, pos = "long")
 s6 <- defstock(symbol = "TLS", amount = 3e5, pos = "long")
 
-p4 <- list(s1, s2, s3, s4, s5, s6)
-p4p <- sum(unlist(lapply(p4, function(s) price(s, val.date, refdata))))
+o1 <- defoption(symbol = "BHP", callFlag = "p", pos = "long", amount = 5.5e5,
+                strike = 38, maturity = "2014-10-07", vol = 0.2453)
+o2 <- defoption(symbol = "RIO", callFlag = "p", pos = "long", amount = 2e5,
+                strike = 63, maturity = "2015-02-08", vol = 0.2949)
+o3 <- defoption(symbol = "RIO", callFlag = "c", pos = "long", amount = 2e5,
+                strike = 63, maturity = "2015-01-08", vol = 0.2949)
+o4 <- defoption(symbol = "NCM", callFlag = "p", pos = "short", amount = 3e5,
+                strike = 8.8, maturity = "2015-03-06", vol = 0.41)
+o5 <- defoption(symbol = "NCM", callFlag = "c", pos = "short", amount = 2.5e5,
+                strike = 13, maturity = "2015-04-06", vol = 0.435)
+o6 <- defoption(symbol = "WPL", callFlag = "p", pos = "long", amount = 2e5,
+                strike = 37, maturity = "2015-06-08", vol = 0.2722)
+
+p4 <- defportfolio(s1, s2, s3, s4, s5, s6, o1, o2, o3, o4, o5, o6)
+p4p <- price(p4, val.date, refdata)
