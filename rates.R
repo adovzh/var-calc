@@ -47,8 +47,9 @@ price.fxoption <- function(fxo, valuation, refdata) {
     
     # estimate number of historic data points in similar period last year
     lyStart <- ymd(val.date) - years(1)
-    lyEnd <- ymd(fxo$maturity) - years(1)
-    n <- nrow(rates[rates$Date >= as.Date(lyStart) & rates$Date < as.Date(lyEnd), ])
+#     lyEnd <- ymd(fxo$maturity) - years(1)
+#     n <- nrow(rates[rates$Date >= as.Date(lyStart) & rates$Date < as.Date(lyEnd), ])
+    n <- nrow(rates[rates$Date > as.Date(lyStart), ])
     
     # volatility estimate
     # we do not need to take a reciprocal of exchange rates
