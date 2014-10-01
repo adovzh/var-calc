@@ -3,6 +3,7 @@ source("bonds.R")
 source("rates.R")
 source("stock.R")
 source("portfolio.R")
+source("swaps.R")
 
 # refdata
 refdata <- get.refdata()
@@ -61,3 +62,7 @@ o6 <- defoption(symbol = "WPL", callFlag = "p", pos = "long", amount = 2e5,
 
 p4 <- defportfolio(s1, s2, s3, s4, s5, s6, o1, o2, o3, o4, o5, o6)
 p4p <- price(p4, val.date, refdata)
+
+sw1 <- defswap(rate = 3.2e-2, freq = 2, pos = "long", maturity = "2014-11-07",
+               notional = 2e7)
+sw1p <- price(sw1, val.date, refdata)

@@ -1,19 +1,9 @@
 onDate.curve <- function(curve, date) curve[curve[,1] == date, -1]
 
 zero.maturities <- function(curve, valuation) {
-    r <- regexec("\\w{2}(\\d{2})Y(\\d{2})", names(curve))
-    # names should match
-    stopifnot(all(sapply(r, function(x) length(x) > 1)))
-    
-    z <- mapply(function(name, o) substring(name, o, o + attr(o, "match.length") - 1),
-                names(curve), r, USE.NAMES = FALSE)[-1,]
-    z <- apply(z, 2, as.list)
-    
-    do.call("c", lapply(z, function(x) {
-        y <- as.numeric(x[[1]])
-        m <- as.numeric(x[[2]])
-        as.Date(valuation) + years(y) + months(m)
-    }))    
+    do.call("c", lapply(cnames.as.period(names(curve)), function(p) {
+        as.Date(valuation) + p
+    }))
 }
 
 # returns interpolated value of interest rate
@@ -33,14 +23,15 @@ onDate.rate <- function(curves, valuation, date) {
     })
 }
 
-cashflow.dates <- function(valuation, maturity) {
+cashflow.dates <- function(valuation, maturity, freq = 2) {
     require(lubridate)
     if (maturity < valuation) as.Date(vector())
-    else c(cashflow.dates(valuation, maturity - months(6)), maturity)
+    else c(cashflow.dates(valuation, maturity - months(12 / freq), freq), maturity)
 }
 
-defbond <- function(coupon, maturity, face) {
-    structure(list(coupon = coupon, maturity = maturity, face = face), class="bond")
+defbond <- function(coupon, maturity, face, freq = 2) {
+    structure(list(coupon = coupon, maturity = maturity, 
+                   face = face, freq = freq), class="bond")
 }
 
 price <- function(sec, ...) UseMethod("price")
@@ -48,13 +39,13 @@ price <- function(sec, ...) UseMethod("price")
 price.bond <- function(bond, valuation, refdata) {
     require(lubridate)
     
-    zcurve <- refdata$curves()$AUD
+    zcurve <- if (exists("swap.leg", bond)) refdata$swaps() else refdata$curves()$AUD
     
     # maturities (cashflow dates)
     maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity))
     
     # cashflows
-    coupon.paym <- rep(bond$face * bond$coupon / 2, length(maturity))
+    coupon.paym <- rep(bond$face * bond$coupon / bond$freq, length(maturity))
     fv.paym <- c(rep(0, length(maturity) - 1), bond$face)
     cashflows <- coupon.paym + fv.paym
     
