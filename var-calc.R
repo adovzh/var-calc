@@ -65,4 +65,13 @@ p4p <- price(p4, val.date, refdata)
 
 sw1 <- defswap(rate = 3.2e-2, freq = 2, pos = "long", maturity = "2014-11-07",
                notional = 2e7)
-sw1p <- price(sw1, val.date, refdata)
+sw2 <- defswap(rate = 3.15e-2, freq = 4, pos = "short", maturity = "2015-08-07",
+               notional = 8e7)
+sw3 <- defswap(rate = 3.6e-2, freq = 4, pos = "long", maturity = "2015-11-06",
+               notional = 7e7)
+
+p5 <- defportfolio(sw1, sw2, sw3)
+p5p <- price(p5, val.date, refdata)
+# sw1p <- price(sw1, val.date, refdata)
+# sw2p <- price(sw2, val.date, refdata)
+# sw3p <- price(sw3, val.date, refdata)

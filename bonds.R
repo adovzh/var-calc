@@ -13,7 +13,6 @@ zero.maturities <- function(curve, valuation) {
 onDate.rate <- function(curves, valuation, date) {
     vcurve <- onDate.curve(curves, valuation)
     zm <- zero.maturities(vcurve, valuation)
-    
     sapply(date, function(m) {
         # i - next zero index
         i <- min(which(zm > m))
@@ -23,10 +22,10 @@ onDate.rate <- function(curves, valuation, date) {
     })
 }
 
-cashflow.dates <- function(valuation, maturity, freq = 2) {
+cashflow.dates <- function(valuation, maturity, freq = 2, prev.date = FALSE) {
     require(lubridate)
-    if (maturity < valuation) as.Date(vector())
-    else c(cashflow.dates(valuation, maturity - months(12 / freq), freq), maturity)
+    if (maturity <= valuation) { if (prev.date) maturity else as.Date(vector()) }
+    else c(cashflow.dates(valuation, maturity - months(12 / freq), freq, prev.date), maturity)
 }
 
 defbond <- function(coupon, maturity, face, freq = 2) {
@@ -42,7 +41,7 @@ price.bond <- function(bond, valuation, refdata) {
     zcurve <- if (exists("swap.leg", bond)) refdata$swaps() else refdata$curves()$AUD
     
     # maturities (cashflow dates)
-    maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity))
+    maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity), bond$freq)
     
     # cashflows
     coupon.paym <- rep(bond$face * bond$coupon / bond$freq, length(maturity))
