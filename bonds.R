@@ -13,13 +13,13 @@ zero.maturities <- function(curve, valuation) {
 onDate.rate <- function(curves, valuation, date) {
     vcurve <- onDate.curve(curves, valuation)
     zm <- zero.maturities(vcurve, valuation)
-    sapply(date, function(m) {
+    x <- sapply(date, function(m) {
         # i - next zero index
         i <- min(which(zm > m))
         m <- as.Date(m)
         a <- as.numeric(m - zm[i - 1]) / as.numeric(zm[i] - zm[i - 1])
         as.numeric(vcurve[i - 1] * (1 - a) + vcurve[i] * a)        
-    })
+    }, USE.NAMES = FALSE)
 }
 
 cashflow.dates <- function(valuation, maturity, freq = 2, prev.date = FALSE) {
@@ -32,8 +32,6 @@ defbond <- function(coupon, maturity, face, freq = 2) {
     structure(list(coupon = coupon, maturity = maturity, 
                    face = face, freq = freq), class="bond")
 }
-
-price <- function(sec, ...) UseMethod("price")
 
 price.bond <- function(bond, valuation, refdata) {
     require(lubridate)

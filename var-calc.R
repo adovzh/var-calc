@@ -1,3 +1,4 @@
+source("generic.R")
 source("refdata.R")
 source("bonds.R")
 source("rates.R")
