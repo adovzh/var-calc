@@ -23,6 +23,17 @@ b5 <- defbond(coupon = .055, maturity = "2018-01-21", face = 5e7)
 p1 <- defportfolio(b1, b2, b3, b4, b5)
 p1p <- price(p1, val.date, refdata)
 
+# spot fx
+fx1 <- deffxspot(currency = "USD", position = -9e7, "2014-08-07", refdata)
+fx2 <- deffxspot(currency = "EUR", position = 6e7, "2014-08-07", refdata)
+fx3 <- deffxspot(currency = "GBP", position = 7e7, "2014-08-07", refdata)
+fx4 <- deffxspot(currency = "NZD", position = 4e7, "2014-08-07", refdata)
+fx5 <- deffxspot(currency = "IR", position = -7e7, "2014-08-07", refdata)
+fx6 <- deffxspot(currency = "JPY", position = -6e7, "2014-08-07", refdata)
+
+p2 <- defportfolio(fx1, fx2, fx3, fx4, fx5, fx6)
+p2p <- price(p2, val.date, refdata)
+
 # currency options and currency forwards
 fo1 <- deffxoption(currency = "USD", callFlag = "c", pos = "short",
                    amount = 6.5e8, strike = 0.9531, maturity = "2014-10-07")

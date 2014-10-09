@@ -58,9 +58,33 @@ factormap.portfolio <- function(p, valuation, refdata) {
 
 deltaNormal.portfolio <- function(p, valuation, refdata) {
     function(conf, days) {
-        P <- factormap(p, valuation, refdata)
-        x <- pricev(P, valuation, refdata)
-        sigma <- cov(returns(P, valuation, refdata, years(2)))
+        rf <- unique(do.call("c", lapply(p, riskfactors)))
+        x <- Reduce("+", lapply(p, function(s) deltarf(s, valuation, refdata)(rf)))
+        sigma <- cov(sapply(rf, function(f) returns(f, valuation, refdata, years(2))))
         qnorm(conf) * sqrt(as.numeric(t(x) %*% sigma %*% x * days))
+    }
+}
+
+deltaGammaMC.portfolio <- function(p, valuation, refdata) {
+    function(conf, days) {
+        rf <- unique(do.call("c", lapply(p, riskfactors)))
+        sigma <- cov(sapply(rf, function(f) returns(f, valuation, refdata, years(2))))
+        x <- Reduce("+", lapply(p, function(s) deltarf(s, valuation, refdata)(rf)))
+        gamma <- Reduce("+", lapply(p, function(s) gammarf(s, valuation, refdata)(rf)))
+        G <- diag(gamma, nrow = length(gamma))
+        e <- eigen(sigma)
+        C <- e$vectors
+        D <- diag(e$values, nrow = length(e$values))
+        Q <- sqrt(D) %*% t(C)
+
+        nsim <- 100000
+        set.seed(42)
+        R <- rnorm(nsim * nrow(sigma))
+        dim(R) <- c(nsim, nrow(sigma))
+        R <- R %*% Q
+        
+        # dV distribution
+        d <- apply(R, 1, function(r) t(x) %*% r + 0.5 * t(r) %*% G %*% r)
+        -quantile(d, 1 - conf, names = FALSE) * sqrt(days)
     }
 }

@@ -1,3 +1,56 @@
+deffxspot <- function(currency, position, valuation, refdata) {
+    rates <- refdata$rates()
+    xrate <- rates[rates$Date == valuation, currency]
+    amount <- xrate * position
+    structure(list(currency = currency, amount = amount), class="fxspot")
+}
+
+price.fxspot <- function(fxspot, valuation, refdata) {
+    rates <- refdata$rates()
+    xrate <- rates[rates$Date == valuation, fxspot$currency]
+    
+    fxspot$amount / xrate
+}
+
+returns.fxspot <- function(fxspot, valuation, refdata, lookback) {
+    rates <- refdata$rates()
+    int <- as.interval(lookback, as.Date(valuation) - lookback)
+    rs <- stocks[stocks$Date %within% int, fxspot$currency]
+    rs[, fxspot$currency] <- 1 / rs[, fxspot$currency]
+    diff(rs) / rs[-length(rs)]
+}
+
+returns.rf_currency <- function(fxspot, valuation, refdata, lookback) {
+    rates <- refdata$rates()
+    int <- as.interval(lookback, as.Date(valuation) - lookback)
+    rs <- rates[rates$Date %within% int, fxspot$currency]
+    rs <- 1 / rs
+    diff(rs) / rs[-length(rs)]
+}
+
+delta.fxspot <- function(fxspot, ...) 1
+
+deltarf.fxspot <- function(fxspot, valuation, refdata) {
+    function(rf) {
+        drf <- rep(0, length(rf))
+        drf[match(riskfactors(fxspot), rf)] <- delta(fxspot, valuation, refdata) * price(fxspot, valuation, refdata)
+        drf                
+    }
+}
+
+gamma.fxspot <- function(fxspot, ...) 0
+
+gammarf.fxspot <- function(fxspot, valuation, refdata) {
+    function(rf) {
+        rep(0, length(rf))
+    }
+}
+
+riskfactors.fxspot <- function(fxspot) {
+    rf <- structure(list(currency = fxspot$currency), class="rf_currency")
+    list(rf)
+}
+
 deffxfwd <- function(currency, amount, fwdrate, maturity) {
     structure(list(currency = currency, amount = amount, fwdrate = fwdrate,
                    maturity = maturity), class = "fxfwd")

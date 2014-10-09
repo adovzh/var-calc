@@ -20,13 +20,33 @@ returns.stock <- function(stock, valuation, refdata, lookback) {
     diff(rs) / rs[-length(rs)]
 }
 
-delta.stock <- function(stock, ...) stock$amount
-gamma.stock <- function(stock, ...) 0
+delta.stock <- function(stock, ...) 1
+
+deltarf.stock <- function(stock, valuation, refdata) {
+    function(rf) {
+        drf <- rep(0, length(rf))
+        drf[match(riskfactors(stock), rf)] <- delta(stock, valuation, refdata) * price(stock, valuation, refdata)
+        drf
+    }
+}
+
+gamma.stock <- function(stock) 0
+
+gammarf.stock <- function(stock, valuation, refdata) {
+    function(rf) {
+        rep(0, length(rf))
+    }
+}
 
 factormap.stock <- function(stock, ...) defportfolio(stock)
 
 is.same.stock <- function(stock, that) {
     class(stock) == class(that) && stock$symbol == that$symbol
+}
+
+riskfactors.stock <- function(stock) {
+    rf <- structure(list(symbol = stock$symbol), class="rf_stock")
+    list(rf)
 }
 
 deltaNormal.stock <- function(stock, valuation, refdata) {
@@ -98,9 +118,20 @@ delta.option <- function(option, valuation, refdata) {
     pnorm(d1) * pfactor
 }
 
+deltarf.option <- function(option, valuation, refdata) {
+    function(rf) {
+        drf <- rep(0, length(rf))
+        drf[match(riskfactors(option), rf)] <- delta(option, valuation, refdata) * price(underlying(option), valuation, refdata)
+        drf        
+    }
+}
+
 gamma.option <- function(option, valuation, refdata) {
     curves <- refdata$curves()    
     stocks <- refdata$stocks()
+    
+    # short factor
+    sfactor <- if (option$pos == "long") 1 else -1
     
     vol <- option$vol
 
@@ -117,8 +148,40 @@ gamma.option <- function(option, valuation, refdata) {
     dnorm(d1) / (S * vol * sqrt(dt))
 }
 
+gammarf.option <- function(option, valuation, refdata) {
+    function(rf) {
+        drf <- rep(0, length(rf))
+        drf[match(riskfactors(option), rf)] <- gamma(option, valuation, refdata) * price(underlying(option), valuation, refdata)
+        drf                
+    }
+}
+
 factormap.option <- function(option, valuation, refdata) {
     amount <- delta(option, valuation, refdata) * option$amount
     pos <- if (amount > 0) option$pos else if (option$pos == "long") "short" else "long"
     defportfolio(defstock(symbol = option$symbol, amount = abs(amount), pos = pos))
+}
+
+riskfactors.option <- function(option) {
+    rf <- structure(list(symbol = option$symbol), class = "rf_stock")
+    list(rf)
+}
+
+underlying.option <- function(option) {
+    defstock(symbol = option$symbol, amount = option$amount, pos = option$pos)
+}
+
+returns.rf_stock <- function(stock, valuation, refdata, lookback) {
+    stocks <- refdata$stocks()
+    int <- as.interval(lookback, as.Date(valuation) - lookback)
+    rs <- stocks[stocks$Date %within% int, stock$symbol]
+    diff(rs) / rs[-length(rs)]
+}
+
+deltaNormal.option <- function(option, valuation, refdata) {
+    deltaNormal(defportfolio(option), valuation, refdata)
+}
+
+deltaGammaMC.option <- function(option, valuation, refdata) {
+    deltaGammaMC(defportfolio(option), valuation, refdata)
 }

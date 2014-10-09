@@ -114,7 +114,7 @@ read.rates <- function() {
         rates <- read.xlsx(file = XLSX_FILE, sheetName = EXCHANGE_RATES_SHEET,
                            startRow = 2, header = FALSE)
         rates <- rates[,-7]
-        colnames(rates) <- c("Date", "USD", "EUR", "NZD", "BOT", "GBP", "TR", "JPY")
+        colnames(rates) <- c("Date", "USD", "EUR", "NZD", "BOT", "GBP", "IR", "JPY")
         
         # cache exchange rates on disk
         write.csv(rates, file = EXCHANGE_RATES_FILE, row.names = FALSE)
