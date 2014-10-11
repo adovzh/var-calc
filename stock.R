@@ -34,7 +34,7 @@ deltarf.stock <- function(stock, valuation, refdata) {
     }
 }
 
-gamma.stock <- function(stock) 0
+gamma.stock <- function(stock, ...) 0
 
 gammarf.stock <- function(stock, valuation, refdata) {
     function(rf) {

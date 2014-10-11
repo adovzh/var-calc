@@ -90,22 +90,40 @@ deltaNormal.portfolio <- function(p, valuation, refdata) {
 
 deltaGammaMC.portfolio <- function(p, valuation, refdata) {
     function(conf, days) {
-        rf <- unique(do.call("c", lapply(p, riskfactors)))
+        # list of risk factors of portfolio components
+        rfprofile <- lapply(p, function(s) riskfactors(s, valuation, refdata))
+        
+        # aggregated list of portfolio risk factors
+        rf <- unique(do.call("c", rfprofile))
+        
+        # lists of "masks" of portfolio components
+        masks <- lapply(rfprofile, function(r) {
+            rc <- sapply(r, as.character)
+            rfc <- sapply(rf, as.character)
+            match(rc, rfc)
+        })
+        
+        # vector X, dollar deltas
+        x <- Reduce("+", mapply(function(s, m) {
+            drf <- rep(0, length(rf))
+            drf[m] <- delta(s, valuation, refdata) * pricev(s, valuation, refdata)
+            drf
+        }, p, masks, SIMPLIFY = FALSE))
+        
+        # covariance matrix of risk factors returns
         sigma <- cov(sapply(rf, function(f) returns(f, valuation, refdata, years(2))))
-        x <- Reduce("+", lapply(p, function(s) deltarf(s, valuation, refdata)(rf)))
-        gamma <- Reduce("+", lapply(p, function(s) gammarf(s, valuation, refdata)(rf)))
-        G <- diag(gamma, nrow = length(gamma))
-        e <- eigen(sigma)
-        C <- e$vectors
-        D <- diag(e$values, nrow = length(e$values))
-        Q <- sqrt(D) %*% t(C)
 
+        gamma <- Reduce("+", mapply(function(s, m) {
+            drf <- rep(0, length(rf))
+            drf[m] <- gamma(s, valuation, refdata) * pricev(s, valuation, refdata)
+            drf
+        }, p, masks, SIMPLIFY = FALSE))
+
+        G <- diag(gamma, nrow = length(gamma))
         nsim <- 100000
         set.seed(42)
-        R <- rnorm(nsim * nrow(sigma))
-        dim(R) <- c(nsim, nrow(sigma))
-        R <- R %*% Q
-        
+        R <- mvrnorm(nsim, sigma)
+
         # dV distribution
         d <- apply(R, 1, function(r) t(x) %*% r + 0.5 * t(r) %*% G %*% r)
         -quantile(d, 1 - conf, names = FALSE) * sqrt(days)

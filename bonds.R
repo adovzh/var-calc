@@ -65,7 +65,14 @@ pricev.bond <- function(bond, valuation, refdata) {
 delta.bond <- function(bond, valuation, refdata) {
     # maturities (cashflow dates)
     maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity), bond$freq)
-    as.numeric(maturity - as.Date(val.date)) / 365
+    -as.numeric(maturity - as.Date(val.date)) / 365
+}
+
+gamma.bond <- function(bond, valuation, refdata) {
+    # maturities (cashflow dates)
+    maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity), bond$freq)
+    t <- as.numeric(maturity - as.Date(val.date)) / 365
+    t * t / 2
 }
 
 riskfactors.bond <- function(bond, valuation, refdata) {

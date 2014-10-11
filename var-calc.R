@@ -1,3 +1,4 @@
+source("common.R")
 source("generic.R")
 source("refdata.R")
 source("bonds.R")
@@ -22,6 +23,7 @@ b5 <- defbond(coupon = .055, maturity = "2018-01-21", face = 5e7)
 # portfolio
 p1 <- defportfolio(b1, b2, b3, b4, b5)
 p1p <- price(p1, val.date, refdata)
+
 
 # spot fx
 fx1 <- deffxspot(currency = "USD", position = -9e7, "2014-08-07", refdata)
@@ -87,3 +89,16 @@ p5p <- price(p5, val.date, refdata)
 # sw1p <- price(sw1, val.date, refdata)
 # sw2p <- price(sw2, val.date, refdata)
 # sw3p <- price(sw3, val.date, refdata)
+
+varmatrix <- function(varfunc) {
+    conf <- c(.95, .99)
+    names(conf) <- c("95%", "99%")
+    
+    days <- c(1, 10)
+    names(days) <- c("1 day", "10 days")
+    
+    outer(conf, days, FUN = varfunc)
+}
+
+# portfolio 1 delta-normal
+p1vdn <- varmatrix(deltaNormal(p1, val.date, refdata))
