@@ -13,6 +13,10 @@ price.stock <- function(stock, valuation, refdata) {
     stocks[stocks$Date == valuation, stock$symbol] * stock$amount * sfactor
 }
 
+pricev.stock <- function(stock, valuation, refdata) {
+    price(stock, valuation, refdata)
+}
+
 returns.stock <- function(stock, valuation, refdata, lookback) {
     stocks <- refdata$stocks()
     int <- as.interval(lookback, as.Date(valuation) - lookback)
@@ -44,7 +48,7 @@ is.same.stock <- function(stock, that) {
     class(stock) == class(that) && stock$symbol == that$symbol
 }
 
-riskfactors.stock <- function(stock) {
+riskfactors.stock <- function(stock, ...) {
     rf <- structure(list(symbol = stock$symbol), class="rf_stock")
     list(rf)
 }
@@ -91,6 +95,10 @@ price.option <- function(option, valuation, refdata) {
     d2 <- d1 - vol * sqrt(dt)
     p <- (S * pnorm(d1) - K * exp(-r * dt) * pnorm(d2))
     p * pfactor * sfactor * option$amount
+}
+
+pricev.option <- function(option, valuation, refdata) {
+    price(underlying(option), valuation, refdata)
 }
 
 delta.option <- function(option, valuation, refdata) {
@@ -162,7 +170,7 @@ factormap.option <- function(option, valuation, refdata) {
     defportfolio(defstock(symbol = option$symbol, amount = abs(amount), pos = pos))
 }
 
-riskfactors.option <- function(option) {
+riskfactors.option <- function(option, ...) {
     rf <- structure(list(symbol = option$symbol), class = "rf_stock")
     list(rf)
 }

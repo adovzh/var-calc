@@ -58,9 +58,32 @@ factormap.portfolio <- function(p, valuation, refdata) {
 
 deltaNormal.portfolio <- function(p, valuation, refdata) {
     function(conf, days) {
-        rf <- unique(do.call("c", lapply(p, riskfactors)))
-        x <- Reduce("+", lapply(p, function(s) deltarf(s, valuation, refdata)(rf)))
+        require(lubridate)
+        
+        # list of risk factors of portfolio components
+        rfprofile <- lapply(p, function(s) riskfactors(s, valuation, refdata))
+
+        # aggregated list of portfolio risk factors
+        rf <- unique(do.call("c", rfprofile))
+
+        # lists of "masks" of portfolio components
+        masks <- lapply(rfprofile, function(r) {
+            rc <- sapply(r, as.character)
+            rfc <- sapply(rf, as.character)
+            match(rc, rfc)
+        })
+        
+        # vector X, dollar deltas
+        x <- Reduce("+", mapply(function(s, m) {
+            drf <- rep(0, length(rf))
+            drf[m] <- delta(s, valuation, refdata) * pricev(s, valuation, refdata)
+            drf
+        }, p, masks, SIMPLIFY = FALSE))
+        
+        # covariance matrix of risk factors returns
         sigma <- cov(sapply(rf, function(f) returns(f, valuation, refdata, years(2))))
+        
+        # quantile of the distribution
         qnorm(conf) * sqrt(as.numeric(t(x) %*% sigma %*% x * days))
     }
 }
