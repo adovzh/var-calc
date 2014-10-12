@@ -17,6 +17,13 @@ pricev.stock <- function(stock, valuation, refdata) {
     price(stock, valuation, refdata)
 }
 
+priceh.stock <- function(stock, valuation, refdata) {
+    # short factor
+    sfactor <- if (stock$pos == "long") 1 else -1
+    
+    function(r) r * stock$amount * sfactor
+}
+
 returns.stock <- function(stock, valuation, refdata, lookback) {
     stocks <- refdata$stocks()
     int <- as.interval(lookback, as.Date(valuation) - lookback)
@@ -101,6 +108,35 @@ pricev.option <- function(option, valuation, refdata) {
     price(underlying(option), valuation, refdata)
 }
 
+priceh.option <- function(option, valuation, refdata) {
+    curves <- refdata$curves()
+    stocks <- refdata$stocks()
+    
+    # put factor
+    pfactor <- if (option$callFlag == "c") 1 else -1
+    
+    # short factor
+    sfactor <- if (option$pos == "long") 1 else -1
+    
+    # negative volatility ;)
+    vol <- option$vol * pfactor
+    
+    # strike
+    K <- option$strike
+    
+    # domestic interest rate
+    r <- onDate.rate(curves$AUD, valuation, option$maturity)
+    
+    dt <- as.numeric(as.Date(option$maturity) - as.Date(valuation)) / 365
+    
+    function (S) {
+        d1 <- (log(S / K) + (r + vol^2 / 2) * dt) / (vol * sqrt(dt))
+        d2 <- d1 - vol * sqrt(dt)
+        p <- (S * pnorm(d1) - K * exp(-r * dt) * pnorm(d2))
+        p * pfactor * sfactor * option$amount
+    }
+}
+
 delta.option <- function(option, valuation, refdata) {
     curves <- refdata$curves()    
     stocks <- refdata$stocks()
@@ -180,10 +216,14 @@ underlying.option <- function(option) {
 }
 
 returns.rf_stock <- function(stock, valuation, refdata, lookback) {
+    rs <- history(stock, valuation, refdata, lookback)
+    diff(rs) / rs[-length(rs)]
+}
+
+history.rf_stock <- function(stock, valuation, refdata, lookback) {
     stocks <- refdata$stocks()
     int <- as.interval(lookback, as.Date(valuation) - lookback)
-    rs <- stocks[stocks$Date %within% int, stock$symbol]
-    diff(rs) / rs[-length(rs)]
+    stocks[stocks$Date %within% int, stock$symbol]    
 }
 
 deltaNormal.option <- function(option, valuation, refdata) {

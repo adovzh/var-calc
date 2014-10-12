@@ -12,6 +12,15 @@ pricev.portfolio <- function(p, valuation, refdata) {
     unlist(lapply(p, function(s) price(s, valuation, refdata)))
 }
 
+priceh.portfolio <- function(p, valuation, refdata, masks) {
+    phs <- lapply(p, function(s) priceh(s, valuation, refdata))
+    function(r) {
+       sum(mapply(function(ph, m) {
+           sum(ph(r[m]))
+       }, phs, masks))
+    }
+}
+
 returns.portfolio <- function(p, valuation, refdata, lookback) {
     sapply(p, function(s) returns(s, valuation, refdata, lookback))
 }
@@ -127,5 +136,42 @@ deltaGammaMC.portfolio <- function(p, valuation, refdata) {
         # dV distribution
         d <- apply(R, 1, function(r) t(x) %*% r + 0.5 * t(r) %*% G %*% r)
         -quantile(d, 1 - conf, names = FALSE) * sqrt(days)
+    }
+}
+
+historical.portfolio <- function(p, valuation, refdata) {
+    function(conf, days) {
+        # obtain the value of the portfolio on the valuation date
+        pp <- price(p, valuation, refdata)
+        
+        # list of risk factors of portfolio components
+        rfprofile <- lapply(p, function(s) riskfactors(s, valuation, refdata))
+        
+        # aggregated list of portfolio risk factors
+        rf <- unique(do.call("c", rfprofile))
+        
+        # lists of "masks" of portfolio components
+        masks <- lapply(rfprofile, function(r) {
+            rc <- sapply(r, as.character)
+            rfc <- sapply(rf, as.character)
+            match(rc, rfc)
+        })
+        
+        # obtain the history of risk factors
+        h <- sapply(rf, function(r) history(r, valuation, refdata, years(2)))
+        # returns (1+dr, cur / prev)
+        rt <- apply(h, 2, function(x) tail(x, -days) / head(x, -days))
+        rfcurrent <- tail(h, n = 1)
+        # apply returns to current levels
+        adj <- t(apply(rt, 1, function(x) x * rfcurrent))
+
+        # price function for a given vector of risk factors
+        ph <- priceh(p, valuation, refdata, masks)
+
+        d <- apply(adj, 1, function(r) {
+            ph(r) - pp
+        })
+
+        -quantile(d, probs = 1 - conf, type = 4, names = FALSE)
     }
 }

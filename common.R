@@ -31,3 +31,9 @@ mvrnorm <- function(n, sigma, method = "eigen") {
     # account for correlation
     R %*% Q
 }
+
+underlined <- function(s, c) {
+    len <- nchar(gsub("\n", "", s))
+    u <- paste0(rep(c, len), collapse = "")
+    cat(sprintf("%s\n%s\n", s, u))
+}

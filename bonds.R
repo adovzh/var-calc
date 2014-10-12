@@ -62,6 +62,25 @@ pricev.bond <- function(bond, valuation, refdata) {
     cashflows * exp(-1 * v1 * dt)
 }
 
+priceh.bond <- function(bond, valuation, refdata) {
+    require(lubridate)
+    
+    zcurve <- getcurves(bond, refdata)
+    
+    # maturities (cashflow dates)
+    maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity), bond$freq)
+    
+    # cashflows
+    coupon.paym <- rep(bond$face * bond$coupon / bond$freq, length(maturity))
+    fv.paym <- c(rep(0, length(maturity) - 1), bond$face)
+    cashflows <- coupon.paym + fv.paym
+    
+    # annualised maturities
+    dt <- as.numeric(as.Date(maturity) - as.Date(valuation)) / 365
+    
+    function(r) cashflows * exp(-1 * r * dt)
+}
+
 delta.bond <- function(bond, valuation, refdata) {
     # maturities (cashflow dates)
     maturity <- cashflow.dates(as.Date(valuation), as.Date(bond$maturity), bond$freq)
@@ -94,6 +113,11 @@ deltaNormal.bond <- function(bond, valuation, refdata) {
 }
 
 returns.rf_zero <- function(rf_zero, valuation, refdata, lookback) {
+    rs <- history(rf_zero, valuation, refdata, lookback)
+    diff(rs) / rs[-length(rs)]
+}
+
+history.rf_zero <- function(rf_zero, valuation, refdata, lookback) {
     require(lubridate)
     
     zcurve <- getcurves(rf_zero, refdata)
@@ -108,8 +132,7 @@ returns.rf_zero <- function(rf_zero, valuation, refdata, lookback) {
     a <- as.numeric(m - zm[i - 1]) / as.numeric(zm[i] - zm[i - 1])
     
     snapshot <- zcurve[zcurve$Date %within% int, c(i, i + 1)]
-    rs <- snapshot[, 1] * (1 - a) + snapshot[, 2] * a
-    diff(rs) / rs[-length(rs)]
+    snapshot[, 1] * (1 - a) + snapshot[, 2] * a
 }
 
 as.character.rf_zero <- function(rf_zero, ...) {

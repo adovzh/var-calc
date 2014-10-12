@@ -22,7 +22,7 @@ b5 <- defbond(coupon = .055, maturity = "2018-01-21", face = 5e7)
 
 # portfolio
 p1 <- defportfolio(b1, b2, b3, b4, b5)
-p1p <- price(p1, val.date, refdata)
+# p1p <- price(p1, val.date, refdata)
 
 
 # spot fx
@@ -34,7 +34,7 @@ fx5 <- deffxspot(currency = "IR", position = -7e7, "2014-08-07", refdata)
 fx6 <- deffxspot(currency = "JPY", position = -6e7, "2014-08-07", refdata)
 
 p2 <- defportfolio(fx1, fx2, fx3, fx4, fx5, fx6)
-p2p <- price(p2, val.date, refdata)
+# p2p <- price(p2, val.date, refdata)
 
 # currency options and currency forwards
 fo1 <- deffxoption(currency = "USD", callFlag = "c", pos = "short",
@@ -51,7 +51,7 @@ ff2 <- deffxfwd(currency = "USD", amount = 1.2e8, fwdrate = 0.9315, maturity = "
 ff3 <- deffxfwd(currency = "EUR", amount = 8e7, fwdrate = 0.6915, maturity = "2015-01-15")
 
 p3 <- defportfolio(fo1, fo2, fo3, fo4, ff1, ff2, ff3)
-p3p <- price(p3, val.date, refdata)
+# p3p <- price(p3, val.date, refdata)
 
 # portfolio 4
 s1 <- defstock(symbol = "CBA", amount = 8e4, pos = "short")
@@ -75,7 +75,7 @@ o6 <- defoption(symbol = "WPL", callFlag = "p", pos = "long", amount = 2e5,
                 strike = 37, maturity = "2015-06-08", vol = 0.2722)
 
 p4 <- defportfolio(s1, s2, s3, s4, s5, s6, o1, o2, o3, o4, o5, o6)
-p4p <- price(p4, val.date, refdata)
+# p4p <- price(p4, val.date, refdata)
 
 sw1 <- defswap(rate = 3.2e-2, freq = 2, pos = "long", maturity = "2014-11-07",
                notional = 2e7)
@@ -85,7 +85,7 @@ sw3 <- defswap(rate = 3.6e-2, freq = 4, pos = "long", maturity = "2015-11-06",
                notional = 7e7)
 
 p5 <- defportfolio(sw1, sw2, sw3)
-p5p <- price(p5, val.date, refdata)
+# p5p <- price(p5, val.date, refdata)
 # sw1p <- price(sw1, val.date, refdata)
 # sw2p <- price(sw2, val.date, refdata)
 # sw3p <- price(sw3, val.date, refdata)
@@ -97,8 +97,25 @@ varmatrix <- function(varfunc) {
     days <- c(1, 10)
     names(days) <- c("1 day", "10 days")
     
-    outer(conf, days, FUN = varfunc)
+    vectorised <- function(f) {
+        function(conf, days) mapply(f, conf, days)
+    }
+    
+    outer(conf, days, FUN = vectorised(varfunc))
 }
 
-# portfolio 1 delta-normal
-p1vdn <- varmatrix(deltaNormal(p1, val.date, refdata))
+portfolios <- list("Portfolio 1" = p1, "Portfolio 2" = p2, "Portfolio 4" = p4)
+methods <- list("deltaNormal", "deltaGammaMC", "historical")
+
+for (pname in names(portfolios)) {
+    p <- portfolios[[pname]]
+    
+    underlined(sprintf("\nVaR for %s", pname), "=")
+    underlined(sprintf("Mark-to-Market: %.2f", price(p, val.date, refdata)), "~")
+    
+    for (mname in methods) {
+        VaR <- match.fun(mname)
+        underlined(sprintf("\nMethod: %s:", mname), "-")
+        print(varmatrix(VaR(p, val.date, refdata)))
+    }
+}

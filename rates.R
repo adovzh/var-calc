@@ -12,6 +12,16 @@ price.fxspot <- function(fxspot, valuation, refdata) {
     fxspot$amount / xrate
 }
 
+pricev.fxspot <- function(fxspot, valuation, refdata) {
+    price(fxspot, valuation, refdata)
+}
+
+priceh.fxspot <- function(fxspot, valuation, refdata) {
+    function(r) {
+        fxspot$amount * r
+    }
+}
+
 returns.fxspot <- function(fxspot, valuation, refdata, lookback) {
     rates <- refdata$rates()
     int <- as.interval(lookback, as.Date(valuation) - lookback)
@@ -21,11 +31,15 @@ returns.fxspot <- function(fxspot, valuation, refdata, lookback) {
 }
 
 returns.rf_currency <- function(fxspot, valuation, refdata, lookback) {
+    rs <- history(fxspot, valuation, refdata, lookback)
+    diff(rs) / rs[-length(rs)]
+}
+
+history.rf_currency <- function(fxspot, valuation, refdata, lookback) {
     rates <- refdata$rates()
     int <- as.interval(lookback, as.Date(valuation) - lookback)
     rs <- rates[rates$Date %within% int, fxspot$currency]
-    rs <- 1 / rs
-    diff(rs) / rs[-length(rs)]
+    1 / rs    
 }
 
 delta.fxspot <- function(fxspot, ...) 1
@@ -46,7 +60,7 @@ gammarf.fxspot <- function(fxspot, valuation, refdata) {
     }
 }
 
-riskfactors.fxspot <- function(fxspot) {
+riskfactors.fxspot <- function(fxspot, ...) {
     rf <- structure(list(currency = fxspot$currency), class="rf_currency")
     list(rf)
 }
