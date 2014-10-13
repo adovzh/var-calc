@@ -43,22 +43,7 @@ history.rf_currency <- function(fxspot, valuation, refdata, lookback) {
 }
 
 delta.fxspot <- function(fxspot, ...) 1
-
-deltarf.fxspot <- function(fxspot, valuation, refdata) {
-    function(rf) {
-        drf <- rep(0, length(rf))
-        drf[match(riskfactors(fxspot), rf)] <- delta(fxspot, valuation, refdata) * price(fxspot, valuation, refdata)
-        drf                
-    }
-}
-
 gamma.fxspot <- function(fxspot, ...) 0
-
-gammarf.fxspot <- function(fxspot, valuation, refdata) {
-    function(rf) {
-        rep(0, length(rf))
-    }
-}
 
 riskfactors.fxspot <- function(fxspot, ...) {
     rf <- structure(list(currency = fxspot$currency), class="rf_currency")

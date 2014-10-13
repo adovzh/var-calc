@@ -212,5 +212,11 @@ get.refdata <- function(x = list()) {
         }
         x$swaps
     }
-    list(curves = curves, rates = rates, stocks = stocks, swaps = swaps)
+    preload <- function() {
+        curves()
+        rates()
+        stocks()
+        swaps()
+    }
+    list(curves = curves, rates = rates, stocks = stocks, swaps = swaps, preload = preload)
 }

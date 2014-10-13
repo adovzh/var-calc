@@ -8,13 +8,12 @@ mvrnorm <- function(n, sigma, method = "eigen") {
         e <- eigen(sigma)
         C <- e$vectors
         v <- e$values
-#         if (!all(v > 0)) stop("covariance matrix is not positive-definite")
         m <- min(v)
         if (m <= 0) {
             eps <- 1e-19
             d <- if (abs(m) > eps) abs(m) * 1.01 else eps
             sigma <- sigma + d * diag(length(v))
-            warning(paste("covariance matrix is not positive-definite, corrected by", d))
+#             warning(paste("covariance matrix is not positive-definite, corrected by", d))
         } else break
     }
     
@@ -32,6 +31,7 @@ mvrnorm <- function(n, sigma, method = "eigen") {
     R %*% Q
 }
 
+# pretty print the message
 underlined <- function(s, c) {
     len <- nchar(gsub("\n", "", s))
     u <- paste0(rep(c, len), collapse = "")
