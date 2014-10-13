@@ -9,7 +9,7 @@ source("swaps.R")
 
 # refdata
 refdata <- get.refdata()
-refdata$preload()
+dummy <- refdata$preload()
 
 # valuation date
 val.date <- "2014-08-07"
