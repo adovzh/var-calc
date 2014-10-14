@@ -128,9 +128,11 @@ historical.portfolio <- function(p, valuation, refdata) {
         # obtain the history of risk factors
         h <- sapply(rf, function(r) history(r, valuation, refdata, years(2)))
         h <- h[rev(seq(from=nrow(h), to = 1, by = -days)), ]
+        
         # returns (1+dr, cur / prev)
         rt <- apply(h, 2, function(x) tail(x, -1) / head(x, -1))
         rfcurrent <- tail(h, n = 1)
+        
         # apply returns to current levels
         adj <- t(apply(rt, 1, function(x) x * rfcurrent))
 
