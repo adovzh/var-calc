@@ -114,7 +114,7 @@ deltaNormal.bond <- function(bond, valuation, refdata) {
 
 returns.rf_zero <- function(rf_zero, valuation, refdata, lookback) {
     rs <- history(rf_zero, valuation, refdata, lookback)
-    diff(rs) / rs[-length(rs)]
+    diff(rs)
 }
 
 history.rf_zero <- function(rf_zero, valuation, refdata, lookback) {

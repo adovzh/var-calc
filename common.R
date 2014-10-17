@@ -37,3 +37,10 @@ underlined <- function(s, c) {
     u <- paste0(rep(c, len), collapse = "")
     cat(sprintf("%s\n%s\n", s, u))
 }
+
+# check and install required packages
+install.required <- function(...) {
+    req.pkg <- unlist(list(...))
+    to.install <- setdiff(req.pkg, rownames(installed.packages()))
+    if (length(to.install) > 0) install.packages(to.install)
+}

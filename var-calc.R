@@ -7,6 +7,8 @@ source("stock.R")
 source("portfolio.R")
 source("swaps.R")
 
+install.required("lubridate", "xlsx", "xtable")
+
 # refdata
 refdata <- get.refdata()
 dummy <- refdata$preload()
@@ -90,43 +92,50 @@ all.portfolios <- list("Portfolio 1" = p1,
                        "Portfolio 4" = p4,
                        "Portfolio 5" = p5)
 
+mtm <- sapply(all.portfolios, function(p) price(p, val.date, refdata))
+
 for (i in seq_along(all.portfolios)) {
-    pprice <- price(all.portfolios[[i]], val.date, refdata)
+#     pprice <- price(all.portfolios[[i]], val.date, refdata)
+    pprice <- mtm[i]
     assign(sprintf("p%dp", i), pprice)
     underlined(sprintf("\n%s Mark-to-Market: %.2f", names(all.portfolios)[i], pprice), "=")
 }
 
-# pricing
-p1p <- price(p1, val.date, refdata)
-p2p <- price(p2, val.date, refdata)
-p3p <- price(p3, val.date, refdata)
-
-# VaR Report
-varmatrix <- function(varfunc) {
-    conf <- c(.95, .99)
-    names(conf) <- c("95%", "99%")
-    
-    days <- c(1, 10)
-    names(days) <- c("1 day", "10 days")
-    
-    vectorised <- function(f) {
-        function(conf, days) mapply(f, conf, days)
-    }
-    
-    outer(conf, days, FUN = vectorised(varfunc))
+dfmt <- function(x) {
+    fmt <- paste0("$", formatC(abs(x), format = "f", big.mark=",", digits = 2))
+    if (x < 0) fmt <- paste0("-", fmt)
+    else fmt
 }
 
 portfolios <- all.portfolios[c(1, 2, 4)]
 methods <- list("deltaNormal", "deltaGammaMC", "historical")
+dir.create("report", showWarnings = FALSE)
+
+require(xtable)
+
+pricetable <- data.frame(Price = sapply(mtm, dfmt))
+print(xtable(pricetable, caption = "MtM", label = "table:pricex", 
+             align="l|r"), 
+      file = "report/pricex.tex", include.colnames = FALSE)
 
 for (pname in names(portfolios)) {
-    p <- portfolios[[pname]]
-    
-    underlined(sprintf("\nVaR for %s", pname), "=")
-    
-    for (mname in methods) {
-        VaR <- match.fun(mname)
-        underlined(sprintf("\nMethod: %s", mname), "-")
-        print(varmatrix(VaR(p, val.date, refdata)))
-    }
+    cat(sprintf("Processing %s...\n", pname))
+    conf <- rep(c(.95, .99), times = 2)
+    days <- rep(c(1, 10), each = 2)
+    cols <- mapply(function(c, d) {
+        cs <- sprintf("%d%%", c * 100)
+        ds <- sprintf("%d", d)
+        c(cs, ds, lapply(methods, function(m) {
+            VaR <- match.fun(m)
+            dfmt(VaR(portfolios[[pname]], val.date, refdata)(c, d))
+        }))
+    }, conf, days, SIMPLIFY = FALSE)
+    ptable <- data.frame(Reduce(cbind, cols))
+    rownames(ptable) <- c("Confidence Level", "Holding Perdiod", methods)
+    label <- paste0("table:", substr(pname, 1, 1), 
+                    substr(pname, nchar(pname), nchar(pname)))
+    print(xtable(ptable, caption=pname, label = label, align = c("l|cccc")), 
+          file=sprintf("report/%s.tex", pname),
+          include.colnames = FALSE, hline.after = c(-1, 1, 2, 5), scalebox = .9)
+    print(ptable)
 }
