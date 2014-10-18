@@ -6,4 +6,4 @@
 *.csv
 labsession.R
 report
-
+.DS_Store

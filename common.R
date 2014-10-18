@@ -42,5 +42,5 @@ underlined <- function(s, c) {
 install.required <- function(...) {
     req.pkg <- unlist(list(...))
     to.install <- setdiff(req.pkg, rownames(installed.packages()))
-    if (length(to.install) > 0) install.packages(to.install)
+    if (length(to.install) > 0) install.packages(to.install, repos="http://cran.rstudio.com/")
 }
