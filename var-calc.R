@@ -107,7 +107,7 @@ dfmt <- function(x) {
     else fmt
 }
 
-portfolios <- all.portfolios[c(1, 2, 4)]
+portfolios <- all.portfolios
 methods <- list("deltaNormal", "deltaGammaMC", "historical")
 dir.create("report", showWarnings = FALSE)
 
